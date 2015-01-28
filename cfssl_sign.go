@@ -14,7 +14,7 @@ import (
 var signerUsageText = `cfssl sign -- signs a client cert with a host name by a given CA and CA key
 
 Usage of sign:
-        cfssl sign [-ca cert] [-ca-key key] HOSTNAME CSR [SUBJECT]
+        cfssl sign [-ca cert] [-ca-key key] [-config config] [-profile profile] [-remote host] [-label label] HOSTNAME CSR [SUBJECT]
 
 Arguments:
         HOSTNAME:   Hostname for the cert
@@ -28,7 +28,7 @@ Flags:
 `
 
 // Flags of 'cfssl sign'
-var signerFlags = []string{"hostname", "csr", "ca", "ca-key", "config", "profile"}
+var signerFlags = []string{"hostname", "csr", "ca", "ca-key", "config", "profile", "label", "remote"}
 
 // signerMain is the main CLI of signer functionality.
 // [TODO: zi] Decide whether to drop the argument list and only use flags to specify all the inputs.
@@ -70,23 +70,41 @@ func signerMain(args []string) (err error) {
 
 	// Read the certificate and sign it with CA files
 	log.Debug("Loading Client certificate: ", Config.certFile)
-	clientCert, err := readStdin(Config.certFile)
+	clientCSR, err := readStdin(Config.certFile)
 	if err != nil {
 		return
 	}
 
+	// If there is a config, use its signing policy. Otherwise create a default policy
 	var policy *config.Signing
-	// If there is a config, use its signing policy. Otherwise, leave policy == nil
-	// and NewSigner will use DefaultConfig().
 	if Config.cfg != nil {
 		policy = Config.cfg.Signing
+	} else {
+		policy = &config.Signing{
+			Profiles: map[string]*config.SigningProfile{},
+			Default:  config.DefaultConfig(),
+		}
 	}
 
-	signer, err := signer.NewSigner(Config.caFile, Config.caKeyFile, policy)
+	// Make sure the policy reflects the new remote
+	if Config.remote != "" {
+		err = policy.OverrideRemotes(Config.remote)
+		if err != nil {
+			log.Infof("Invalid remote %v, reverting to configuration default", Config.remote)
+			return
+		}
+	}
+
+	// Note: a nil policy can be sent in here and a default one will be created
+	// but we don't do that because we need to create one to hold the remote address
+	sign, err := signer.NewSigner(Config.caFile, Config.caKeyFile, policy)
 	if err != nil {
 		return
 	}
-	cert, err := signer.Sign(Config.hostname, clientCert, subjectData, Config.profile)
+
+	req := signer.SignRequest{Config.hostname, string(clientCSR), subjectData, Config.profile, Config.label}
+
+	cert, err := sign.Sign(req)
 	if err != nil {
 		return
 	}

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/cloudflare/cfssl/api/client"
 	"github.com/cloudflare/cfssl/config"
 	"github.com/cloudflare/cfssl/csr"
 	"github.com/cloudflare/cfssl/initca"
@@ -69,16 +68,13 @@ func gencertMain(args []string) (err error) {
 		printCert(key, nil, cert)
 
 	} else {
-		if Config.remote != "" {
-			return gencertRemotely(req)
-		}
-
-		if Config.caFile == "" {
+		
+		if Config.caFile == "" && Config.remote == "" {
 			log.Error("cannot sign certificate without a CA certificate (provide one with -ca)")
 			return
 		}
 
-		if Config.caKeyFile == "" {
+		if Config.caKeyFile == "" && Config.remote == "" {
 			log.Error("cannot sign certificate without a CA key (provide one with -ca-key)")
 			return
 		}
@@ -103,6 +99,15 @@ func gencertMain(args []string) (err error) {
 			return
 		}
 
+		// Make sure the policy reflects the new remote
+		if Config.remote != "" {
+			err = policy.OverrideRemotes(Config.remote)
+			if err != nil {
+				log.Infof("Invalid remote %v, reverting to configuration default", Config.remote)
+				return
+			}
+		}
+
 		var sign signer.Signer
 		sign, err = signer.NewSigner(Config.caFile, Config.caKeyFile, policy)
 		if err != nil {
@@ -110,7 +115,8 @@ func gencertMain(args []string) (err error) {
 		}
 
 		var cert []byte
-		cert, err = sign.Sign(Config.hostname, csrPEM, nil, Config.profile)
+		req := signer.SignRequest{Config.hostname, string(csrPEM), nil, Config.profile, ""}
+		cert, err = sign.Sign(req)
 		if err != nil {
 			return
 		}
@@ -138,26 +144,6 @@ func printCert(key, csrPEM, cert []byte) {
 		return
 	}
 	fmt.Printf("%s\n", jsonOut)
-}
-
-func gencertRemotely(req csr.CertificateRequest) error {
-	srv := client.NewServer(Config.remote)
-
-	g := &csr.Generator{Validator: validator}
-	csrPEM, key, err := g.ProcessRequest(&req)
-	if err != nil {
-		key = nil
-		return err
-	}
-
-	var cert []byte
-	cert, err = srv.Sign(Config.hostname, csrPEM, Config.profile, "")
-	if err != nil {
-		return err
-	}
-
-	printCert(key, csrPEM, cert)
-	return nil
 }
 
 // CLIGenCert is a subcommand that generates a new certificate from a

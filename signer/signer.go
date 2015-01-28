@@ -8,6 +8,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"io/ioutil"
 	"encoding/asn1"
 	"errors"
 	"math/big"
@@ -15,6 +16,8 @@ import (
 
 	"github.com/cloudflare/cfssl/config"
 	"github.com/cloudflare/cfssl/csr"
+	"github.com/cloudflare/cfssl/log"
+	"github.com/cloudflare/cfssl/helpers"
 	cferr "github.com/cloudflare/cfssl/errors"
 )
 
@@ -24,6 +27,16 @@ type Subject struct {
 	CN    string
 	Names []csr.Name `json:"names"`
 	Hosts []string   `json:"hosts"`
+}
+
+// SignRequest stores a signature request, which contains the hostname,
+// the CSR, optional subject information, and the signature profile.
+type SignRequest struct {
+	Hostname string          `json:"hostname"`
+	Request  string          `json:"certificate_request"`
+	Subject  *Subject        `json:"subject,omitempty"`
+	Profile  string          `json:"profile"`
+	Label    string          `json:"label"`
 }
 
 // appendIf appends to a if s is not an empty string.
@@ -55,7 +68,7 @@ type Signer interface {
 	Policy() *config.Signing
 	SetPolicy(*config.Signing)
 	SigAlgo() x509.SignatureAlgorithm
-	Sign(string, []byte, *Subject, string) (cert []byte, err error)
+	Sign(req SignRequest) (cert []byte, err error)
 }
 
 // DefaultSigAlgo returns an appropriate X.509 signature algorithm given
@@ -172,3 +185,49 @@ func CheckSignature(csr *x509.CertificateRequest, algo x509.SignatureAlgorithm, 
 	}
 	return x509.ErrUnsupportedAlgorithm
 }
+
+// NewSigner generates a new standard library certificate signer using
+// the certificate authority certificate and private key and Signing
+// config for signing. caFile should contain the CA's certificate, and
+// the cakeyFile should contain the private key. Both must be
+// PEM-encoded.
+func NewSigner(caFile, cakeyFile string, policy *config.Signing) (s Signer, err error) {
+	if policy == nil {
+		policy = &config.Signing{
+			Profiles: map[string]*config.SigningProfile{},
+			Default:  config.DefaultConfig(),
+		}
+	}
+
+	if !policy.Valid() {
+		return nil, cferr.New(cferr.PolicyError, cferr.InvalidPolicy)
+	}
+
+	log.Debug("Loading CA: ", caFile)
+	ca, err := ioutil.ReadFile(caFile)
+	if err != nil {
+		return nil, err
+	}
+	log.Debug("Loading CA key: ", cakeyFile)
+	cakey, err := ioutil.ReadFile(cakeyFile)
+	if err != nil {
+		return nil, err
+	}
+
+	parsedCa, err := helpers.ParseCertificatePEM(ca)
+	if err != nil {
+		return nil, err
+	}
+
+	priv, err := helpers.ParsePrivateKeyPEM(cakey)
+	if err != nil {
+		return nil, err
+	}
+
+
+	// TODO: add a hybrid signer here, that checks profile and then
+	// calls out to a standard signer or a remote signer
+	return &StandardSigner{parsedCa, priv, policy, DefaultSigAlgo(priv)}, nil
+}
+
+

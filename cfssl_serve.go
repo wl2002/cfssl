@@ -17,7 +17,8 @@ var serverUsageText = `cfssl serve -- set up a HTTP server handles CF SSL reques
 
 Usage of serve:
         cfssl serve [-address address] [-ca cert] [-ca-bundle bundle] \
-                    [-ca-key key] [-int-bundle bundle] [-port port] [-metadata file]
+                    [-ca-key key] [-int-bundle bundle] [-port port] [-metadata file] \
+                    [-remote remote] [-f config]
 
 Flags:
 `
@@ -36,11 +37,29 @@ func registerHandlers() error {
 	}
 
 	log.Info("Setting up signer endpoint")
-	var signConfig *config.Signing = nil
+	// If there is a config, use its signing policy. Otherwise create a default policy
+	var policy *config.Signing
 	if Config.cfg != nil {
-		signConfig = Config.cfg.Signing
+		policy = Config.cfg.Signing
+	} else {
+		policy = &config.Signing{
+			Profiles: map[string]*config.SigningProfile{},
+			Default:  config.DefaultConfig(),
+		}
 	}
-	signHandler, err := api.NewSignHandler(Config.caFile, Config.caKeyFile, Config.remote, signConfig)
+
+	// Make sure the policy reflects the new remote
+	if Config.remote != "" {
+		err = policy.OverrideRemotes(Config.remote)
+		if err != nil {
+			log.Infof("Invalid remote %v, reverting to configuration default", Config.remote)
+			return err
+		}
+	}
+
+	// Note: a nil policy can be sent in here and a default one will be created
+	// but we don't do that because we need to create one to hold the remote address
+	signHandler, err := api.NewSignHandler(Config.caFile, Config.caKeyFile, policy)
 	if err != nil {
 		log.Warningf("endpoint '/api/v1/cfssl/sign' is disabled: %v", err)
 	} else {
