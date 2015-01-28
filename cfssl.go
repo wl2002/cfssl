@@ -67,6 +67,7 @@ var Config struct {
 	domain            string
 	ip                string
 	remote            string
+	label             string
 }
 
 // Parsed command name
@@ -185,8 +186,9 @@ func main() {
 	cfsslFlagSet.Parse(args)
 	args = cfsslFlagSet.Args()
 
-	Config.cfg = config.LoadFile(Config.configFile)
-	if Config.configFile != "" && Config.cfg == nil {
+	var err error
+	Config.cfg, err = config.LoadFile(Config.configFile)
+	if Config.configFile != "" && err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to load config file\n")
 		os.Exit(1)
 	}

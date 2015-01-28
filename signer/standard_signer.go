@@ -9,7 +9,6 @@ import (
 	"encoding/asn1"
 	"encoding/pem"
 	"errors"
-	"io/ioutil"
 	"math"
 	"math/big"
 	"net"
@@ -17,7 +16,6 @@ import (
 
 	"github.com/cloudflare/cfssl/config"
 	cferr "github.com/cloudflare/cfssl/errors"
-	"github.com/cloudflare/cfssl/helpers"
 	"github.com/cloudflare/cfssl/log"
 )
 
@@ -45,47 +43,6 @@ func NewStandardSigner(priv interface{}, cert *x509.Certificate, sigAlgo x509.Si
 			Default:  config.DefaultConfig(),
 		},
 	}
-}
-
-// NewSigner generates a new standard library certificate signer using
-// the certificate authority certificate and private key and Signing
-// config for signing. caFile should contain the CA's certificate, and
-// the cakeyFile should contain the private key. Both must be
-// PEM-encoded.
-func NewSigner(caFile, cakeyFile string, policy *config.Signing) (*StandardSigner, error) {
-	if policy == nil {
-		policy = &config.Signing{
-			Profiles: map[string]*config.SigningProfile{},
-			Default:  config.DefaultConfig(),
-		}
-	}
-
-	if !policy.Valid() {
-		return nil, cferr.New(cferr.PolicyError, cferr.InvalidPolicy)
-	}
-
-	log.Debug("Loading CA: ", caFile)
-	ca, err := ioutil.ReadFile(caFile)
-	if err != nil {
-		return nil, err
-	}
-	log.Debug("Loading CA key: ", cakeyFile)
-	cakey, err := ioutil.ReadFile(cakeyFile)
-	if err != nil {
-		return nil, err
-	}
-
-	parsedCa, err := helpers.ParseCertificatePEM(ca)
-	if err != nil {
-		return nil, err
-	}
-
-	priv, err := helpers.ParsePrivateKeyPEM(cakey)
-	if err != nil {
-		return nil, err
-	}
-
-	return &StandardSigner{parsedCa, priv, policy, DefaultSigAlgo(priv)}, nil
 }
 
 type subjectPublicKeyInfo struct {
@@ -204,16 +161,14 @@ func (s *StandardSigner) sign(template *x509.Certificate, profile *config.Signin
 
 // Sign signs a new certificate based on the PEM-encoded client
 // certificate or certificate request with the signing profile, specified
-// by profileName. The certificate will be valid for the host named in
-// the hostName parameter. If not nil, the subject information contained
-// in subject will be used in place of the subject information in the CSR.
-func (s *StandardSigner) Sign(hostName string, in []byte, subject *Subject, profileName string) (cert []byte, err error) {
-	profile := s.policy.Profiles[profileName]
+// by profileName.
+func (s *StandardSigner) Sign(req SignRequest) (cert []byte, err error) {
+	profile := s.policy.Profiles[req.Profile]
 	if profile == nil {
 		profile = s.policy.Default
 	}
 
-	block, _ := pem.Decode(in)
+	block, _ := pem.Decode([]byte(req.Request))
 	if block == nil {
 		return nil, cferr.New(cferr.CertificateError, cferr.DecodeFailed)
 	}
@@ -223,21 +178,21 @@ func (s *StandardSigner) Sign(hostName string, in []byte, subject *Subject, prof
 			cferr.ParseFailed, errors.New("not a certificate or csr"))
 	}
 
-	template, err := ParseCertificateRequest(s, block.Bytes, subject)
+	template, err := ParseCertificateRequest(s, block.Bytes, req.Subject)
 	if err != nil {
 		return nil, err
 	}
 
-	if subject == nil {
-		if ip := net.ParseIP(hostName); ip != nil {
+	if req.Subject == nil {
+		if ip := net.ParseIP(req.Hostname); ip != nil {
 			template.IPAddresses = append(template.IPAddresses, ip)
 		} else {
-			template.DNSNames = append(template.DNSNames, hostName)
+			template.DNSNames = append(template.DNSNames, req.Hostname)
 		}
 	} else {
 		template.DNSNames = []string{}
 		template.IPAddresses = []net.IP{}
-		for _, host := range subject.Hosts {
+		for _, host := range req.Subject.Hosts {
 			if ip := net.ParseIP(host); ip != nil {
 				template.IPAddresses = append(template.IPAddresses, ip)
 			} else {
