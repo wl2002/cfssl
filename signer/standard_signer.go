@@ -32,17 +32,18 @@ type StandardSigner struct {
 }
 
 // NewStandardSigner creates a new StandardSigner directly from a
-// private key and certificate.
-func NewStandardSigner(priv interface{}, cert *x509.Certificate, sigAlgo x509.SignatureAlgorithm) *StandardSigner {
+// private key and certificate, with optional policy.
+func NewStandardSigner(priv interface{}, cert *x509.Certificate, sigAlgo x509.SignatureAlgorithm, policy *config.Signing) *StandardSigner {
+	if policy == nil {
+		policy = &config.Signing{
+			Profiles: map[string]*config.SigningProfile{},
+			Default:  config.DefaultConfig()}
+	}
 	return &StandardSigner{
 		ca:      cert,
 		priv:    priv,
 		sigAlgo: sigAlgo,
-		policy: &config.Signing{
-			Profiles: map[string]*config.SigningProfile{},
-			Default:  config.DefaultConfig(),
-		},
-	}
+		policy:  policy}
 }
 
 type subjectPublicKeyInfo struct {

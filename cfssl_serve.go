@@ -37,24 +37,9 @@ func registerHandlers() error {
 	}
 
 	log.Info("Setting up signer endpoint")
-	// If there is a config, use its signing policy. Otherwise create a default policy
-	var policy *config.Signing
-	if Config.cfg != nil {
-		policy = Config.cfg.Signing
-	} else {
-		policy = &config.Signing{
-			Profiles: map[string]*config.SigningProfile{},
-			Default:  config.DefaultConfig(),
-		}
-	}
-
-	// Make sure the policy reflects the new remote
-	if Config.remote != "" {
-		err = policy.OverrideRemotes(Config.remote)
-		if err != nil {
-			log.Infof("Invalid remote %v, reverting to configuration default", Config.remote)
-			return err
-		}
+	policy, err := signingPolicyFromConfig()
+	if err != nil {
+		return err
 	}
 
 	// Note: a nil policy can be sent in here and a default one will be created
