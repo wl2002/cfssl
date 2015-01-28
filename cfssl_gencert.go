@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/cloudflare/cfssl/config"
 	"github.com/cloudflare/cfssl/csr"
 	"github.com/cloudflare/cfssl/initca"
 	"github.com/cloudflare/cfssl/log"
@@ -15,9 +14,9 @@ import (
 var gencertUsageText = `cfssl gencert -- generate a new key and signed certificate
 
 Usage of gencert:
-        cfssl gencert [-initca] CSRJSON
-        cfssl gencert [-remote remote_server] HOSTNAME CSRJSON
-        cfssl gencert [-ca cert] [-ca-key key] HOSTNAME CSRJSON
+        cfssl gencert -initca CSRJSON
+        cfssl gencert -ca cert -ca-key key [-config config] [-profile -profile] HOSTNAME CSRJSON
+        cfssl gencert -remote remote_host [-config config] [-profile profile] [-label label] HOSTNAME CSRJSON
 
 Arguments:
         HOSTNAME:   Hostname for the cert
@@ -27,7 +26,7 @@ Arguments:
 Flags:
 `
 
-var gencertFlags = []string{"initca", "remote", "ca", "ca-key", "config"}
+var gencertFlags = []string{"initca", "remote", "ca", "ca-key", "config", "profile", "label"}
 
 func gencertMain(args []string) (err error) {
 	if Config.hostname == "" && !Config.isCA {
@@ -37,18 +36,18 @@ func gencertMain(args []string) (err error) {
 		}
 	}
 
-	csrFile, args, err := popFirstArgument(args)
+	csrJSONFile, args, err := popFirstArgument(args)
 	if err != nil {
 		return
 	}
 
-	csrFileBytes, err := readStdin(csrFile)
+	csrJSONFileBytes, err := readStdin(csrJSONFile)
 	if err != nil {
 		return
 	}
 
 	var req csr.CertificateRequest
-	err = json.Unmarshal(csrFileBytes, &req)
+	err = json.Unmarshal(csrJSONFileBytes, &req)
 	if err != nil {
 		return
 	}
@@ -68,75 +67,71 @@ func gencertMain(args []string) (err error) {
 		printCert(key, nil, cert)
 
 	} else {
-		
-		if Config.caFile == "" && Config.remote == "" {
-			log.Error("cannot sign certificate without a CA certificate (provide one with -ca)")
-			return
-		}
-
-		if Config.caKeyFile == "" && Config.remote == "" {
-			log.Error("cannot sign certificate without a CA key (provide one with -ca-key)")
-			return
-		}
-
-		var policy *config.Signing
-		// If there is a config, use its signing policy. Otherwise, leave policy == nil
-		// and NewSigner will use DefaultConfig().
-		if Config.cfg != nil {
-			policy = Config.cfg.Signing
-		}
-
 		if req.CA != nil {
 			err = errors.New("ca section only permitted in initca")
 			return
 		}
 
-		var key, csrPEM []byte
+		if Config.remote == "" && Config.cfg == nil {
+			if Config.caFile == "" {
+				log.Error("need a CA certificate (provide one with -ca)")
+				return
+			}
+
+			if Config.caKeyFile == "" {
+				log.Error("need a CA key (provide one with -ca-key)")
+				return
+			}
+		}
+
+		var key, csrBytes []byte
 		g := &csr.Generator{Validator: validator}
-		csrPEM, key, err = g.ProcessRequest(&req)
+		csrBytes, key, err = g.ProcessRequest(&req)
 		if err != nil {
 			key = nil
 			return
 		}
 
-		// Make sure the policy reflects the new remote
-		if Config.remote != "" {
-			err = policy.OverrideRemotes(Config.remote)
-			if err != nil {
-				log.Infof("Invalid remote %v, reverting to configuration default", Config.remote)
-				return
-			}
+		policy, err := signingPolicyFromConfig()
+		if err != nil {
+			return err
 		}
 
-		var sign signer.Signer
-		sign, err = signer.NewSigner(Config.caFile, Config.caKeyFile, policy)
+		sign, err := signer.NewSigner(Config.caFile, Config.caKeyFile, policy)
 		if err != nil {
-			return
+			return err
 		}
 
 		var cert []byte
-		req := signer.SignRequest{Config.hostname, string(csrPEM), nil, Config.profile, ""}
+		req := signer.SignRequest{
+			Hostname: Config.hostname,
+			Request:  string(csrBytes),
+			Subject:  nil,
+			Profile:  Config.profile,
+			Label:    Config.label}
+
 		cert, err = sign.Sign(req)
 		if err != nil {
-			return
+			return err
 		}
 
-		printCert(key, csrPEM, cert)
+		printCert(key, csrBytes, cert)
 	}
 	return nil
 }
 
-func printCert(key, csrPEM, cert []byte) {
-	out := map[string]string{
-		"cert": string(cert),
+func printCert(key, csrBytes, cert []byte) {
+	out := map[string]string{}
+	if cert != nil {
+		out["cert"] = string(cert)
 	}
 
 	if key != nil {
 		out["key"] = string(key)
 	}
 
-	if csrPEM != nil {
-		out["csr"] = string(csrPEM)
+	if csrBytes != nil {
+		out["csr"] = string(csrBytes)
 	}
 
 	jsonOut, err := json.Marshal(out)

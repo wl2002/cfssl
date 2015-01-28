@@ -4,9 +4,9 @@ package config
 import (
 	"crypto/x509"
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"time"
-	"errors"
 
 	"github.com/cloudflare/cfssl/api/client"
 	"github.com/cloudflare/cfssl/auth"
@@ -124,6 +124,34 @@ func (p *Signing) OverrideRemotes(remote string) error {
 		}
 	}
 	return nil
+}
+
+// NeedsRemoteSigner returns true if one of the profiles has a remote set
+func (p *Signing) NeedsRemoteSigner() bool {
+	for _, profile := range p.Profiles {
+		if profile.Remote != nil {
+			return true
+		}
+	}
+	if p.Default.Remote != nil {
+		return true
+	}
+
+	return false
+}
+
+// NeedsLocalSigner returns true if one of the profiles doe not have a remote set
+func (p *Signing) NeedsLocalSigner() bool {
+	for _, profile := range p.Profiles {
+		if profile.Remote == nil {
+			return true
+		}
+	}
+	if p.Default.Remote == nil {
+		return true
+	}
+
+	return false
 }
 
 // Usages parses the list of key uses in the profile, translating them

@@ -65,7 +65,7 @@ func New(req *csr.CertificateRequest) (cert, key []byte, err error) {
 		return
 	}
 
-	s := signer.NewStandardSigner(priv, nil, signer.DefaultSigAlgo(priv))
+	s := signer.NewStandardSigner(priv, nil, signer.DefaultSigAlgo(priv), nil)
 	s.SetPolicy(CAPolicy)
 
 	signReq := signer.SignRequest{"", string(csr), nil, "", ""}
@@ -151,7 +151,7 @@ func NewFromPEM(req *csr.CertificateRequest, keyFile string) (cert []byte, err e
 	}
 	certReq = pem.EncodeToMemory(p)
 
-	s := signer.NewStandardSigner(priv, nil, signer.DefaultSigAlgo(priv))
+	s := signer.NewStandardSigner(priv, nil, signer.DefaultSigAlgo(priv), nil)
 	s.SetPolicy(CAPolicy)
 
 	signReq := signer.SignRequest{"", string(certReq), nil, "", ""}
