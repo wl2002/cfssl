@@ -597,7 +597,7 @@ func newBundler(t *testing.T) (b *Bundler) {
 
 // create a test intermediate cert in PEM
 func createInterCert(t *testing.T, csrFile string, policy *config.Signing, profileName string) (certPEM []byte) {
-	s, err := signer.NewSigner(testCAFile, testCAKeyFile, policy)
+	s, err := signer.NewSigner(signer.Root{CertFile: testCAFile, KeyFile: testCAKeyFile}, policy)
 	if err != nil {
 		t.Fatal(err)
 	}

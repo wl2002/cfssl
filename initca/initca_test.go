@@ -132,7 +132,10 @@ func TestInitCA(t *testing.T) {
 				CA:           true,
 			},
 		}
-		s := signer.NewStandardSigner(key, cert, signer.DefaultSigAlgo(key), nil)
+		s, err := signer.NewLocalSigner(key, cert, signer.DefaultSigAlgo(key), nil)
+		if err != nil {
+			t.Fatal("Signer Creation error:", err)
+		}
 		s.SetPolicy(CAPolicy)
 
 		// Sign RSA and ECDSA customer CSRs.

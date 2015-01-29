@@ -96,6 +96,7 @@ func signerMain(args []string) (err error) {
 		return
 	}
 
+	// Remote can be forced on the command line or in the config
 	if Config.remote == "" && Config.cfg == nil {
 		if Config.caFile == "" {
 			log.Error("need CA certificate (provide one with -ca)")
@@ -113,7 +114,11 @@ func signerMain(args []string) (err error) {
 		return
 	}
 
-	sign, err := signer.NewSigner(Config.caFile, Config.caKeyFile, policy)
+	root := signer.Root{
+		CertFile:    Config.caFile,
+		KeyFile:     Config.caKeyFile,
+		ForceRemote: Config.remote == ""}
+	s, err := signer.NewSigner(root, policy)
 	if err != nil {
 		return
 	}
@@ -125,7 +130,7 @@ func signerMain(args []string) (err error) {
 		Profile:  Config.profile,
 		Label:    Config.label}
 
-	cert, err := sign.Sign(req)
+	cert, err := s.Sign(req)
 	if err != nil {
 		return
 	}

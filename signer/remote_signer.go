@@ -16,11 +16,12 @@ type RemoteSigner struct {
 
 // NewRemoteSigner creates a new RemoteSigner directly from a
 // signing policy.
-func NewRemoteSigner(policy *config.Signing) *RemoteSigner {
+func NewRemoteSigner(policy *config.Signing) (*RemoteSigner, error) {
 	if policy != nil {
-		return &RemoteSigner{policy: policy}
+		return &RemoteSigner{policy: policy}, nil
 	} else {
-		return nil
+		return nil, cferr.New(cferr.PolicyError,
+			cferr.InvalidPolicy)
 	}
 }
 

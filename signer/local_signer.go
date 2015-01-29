@@ -9,6 +9,7 @@ import (
 	"encoding/asn1"
 	"encoding/pem"
 	"errors"
+	"io/ioutil"
 	"math"
 	"math/big"
 	"net"
@@ -16,34 +17,63 @@ import (
 
 	"github.com/cloudflare/cfssl/config"
 	cferr "github.com/cloudflare/cfssl/errors"
+	"github.com/cloudflare/cfssl/helpers"
 	"github.com/cloudflare/cfssl/log"
 )
 
 // MaxPathLen is the default path length for a new CA certificate.
 var MaxPathLen = 2
 
-// StandardSigner contains a signer that uses the standard library to
+// LocalSigner contains a signer that uses the standard library to
 // support both ECDSA and RSA CA keys.
-type StandardSigner struct {
+type LocalSigner struct {
 	ca      *x509.Certificate
 	priv    interface{}
 	policy  *config.Signing
 	sigAlgo x509.SignatureAlgorithm
 }
 
-// NewStandardSigner creates a new StandardSigner directly from a
+// NewLocalSigner creates a new LocalSigner directly from a
 // private key and certificate, with optional policy.
-func NewStandardSigner(priv interface{}, cert *x509.Certificate, sigAlgo x509.SignatureAlgorithm, policy *config.Signing) *StandardSigner {
+func NewLocalSigner(priv interface{}, cert *x509.Certificate, sigAlgo x509.SignatureAlgorithm, policy *config.Signing) (*LocalSigner, error) {
 	if policy == nil {
 		policy = &config.Signing{
 			Profiles: map[string]*config.SigningProfile{},
 			Default:  config.DefaultConfig()}
 	}
-	return &StandardSigner{
+	return &LocalSigner{
 		ca:      cert,
 		priv:    priv,
 		sigAlgo: sigAlgo,
-		policy:  policy}
+		policy:  policy}, nil
+}
+
+// NewLocalSignerFromFile generates a new local signer from a caFile
+// and a caKey file, both PEM encoded.
+func NewLocalSignerFromFile(caFile, caKeyFile string, policy *config.Signing) (*LocalSigner, error) {
+	log.Debug("Loading CA: ", caFile)
+	ca, err := ioutil.ReadFile(caFile)
+	if err != nil {
+		return nil, err
+	}
+	log.Debug("Loading CA key: ", caKeyFile)
+	cakey, err := ioutil.ReadFile(caKeyFile)
+	if err != nil {
+		return nil, cferr.Wrap(cferr.CertificateError, cferr.ReadFailed, err)
+	}
+
+	parsedCa, err := helpers.ParseCertificatePEM(ca)
+	if err != nil {
+		return nil, err
+	}
+
+	priv, err := helpers.ParsePrivateKeyPEM(cakey)
+	if err != nil {
+		log.Debug("Malformed Private key %v", err)
+		return nil, err
+	}
+
+	return NewLocalSigner(priv, parsedCa, DefaultSigAlgo(priv), policy)
 }
 
 type subjectPublicKeyInfo struct {
@@ -51,7 +81,7 @@ type subjectPublicKeyInfo struct {
 	SubjectPublicKey asn1.BitString
 }
 
-func (s *StandardSigner) sign(template *x509.Certificate, profile *config.SigningProfile) (cert []byte, err error) {
+func (s *LocalSigner) sign(template *x509.Certificate, profile *config.SigningProfile) (cert []byte, err error) {
 	pub := template.PublicKey
 	encodedpub, err := x509.MarshalPKIXPublicKey(pub)
 	if err != nil {
@@ -163,7 +193,7 @@ func (s *StandardSigner) sign(template *x509.Certificate, profile *config.Signin
 // Sign signs a new certificate based on the PEM-encoded client
 // certificate or certificate request with the signing profile, specified
 // by profileName.
-func (s *StandardSigner) Sign(req SignRequest) (cert []byte, err error) {
+func (s *LocalSigner) Sign(req SignRequest) (cert []byte, err error) {
 	profile := s.policy.Profiles[req.Profile]
 	if profile == nil {
 		profile = s.policy.Default
@@ -176,7 +206,7 @@ func (s *StandardSigner) Sign(req SignRequest) (cert []byte, err error) {
 
 	if block.Type != "CERTIFICATE REQUEST" {
 		return nil, cferr.Wrap(cferr.CertificateError,
-			cferr.ParseFailed, errors.New("not a certificate or csr"))
+			cferr.BadRequest, errors.New("not a certificate or csr"))
 	}
 
 	template, err := ParseCertificateRequest(s, block.Bytes, req.Subject)
@@ -205,22 +235,22 @@ func (s *StandardSigner) Sign(req SignRequest) (cert []byte, err error) {
 }
 
 // SigAlgo returns the RSA signer's signature algorithm.
-func (s *StandardSigner) SigAlgo() x509.SignatureAlgorithm {
+func (s *LocalSigner) SigAlgo() x509.SignatureAlgorithm {
 	return s.sigAlgo
 }
 
 // Certificate returns the signer's certificate.
-func (s *StandardSigner) Certificate() *x509.Certificate {
+func (s *LocalSigner) Certificate() *x509.Certificate {
 	cert := *s.ca
 	return &cert
 }
 
 // SetPolicy sets the signer's signature policy.
-func (s *StandardSigner) SetPolicy(policy *config.Signing) {
+func (s *LocalSigner) SetPolicy(policy *config.Signing) {
 	s.policy = policy
 }
 
 // Policy returns the signer's policy.
-func (s *StandardSigner) Policy() *config.Signing {
+func (s *LocalSigner) Policy() *config.Signing {
 	return s.policy
 }

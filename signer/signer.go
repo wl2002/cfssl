@@ -10,15 +10,12 @@ import (
 	"crypto/x509/pkix"
 	"encoding/asn1"
 	"errors"
-	"io/ioutil"
 	"math/big"
 	"net"
 
 	"github.com/cloudflare/cfssl/config"
 	"github.com/cloudflare/cfssl/csr"
 	cferr "github.com/cloudflare/cfssl/errors"
-	"github.com/cloudflare/cfssl/helpers"
-	"github.com/cloudflare/cfssl/log"
 )
 
 // Subject contains the information that should be used to override the
@@ -37,6 +34,14 @@ type SignRequest struct {
 	Subject  *Subject `json:"subject,omitempty"`
 	Profile  string   `json:"profile"`
 	Label    string   `json:"label"`
+}
+
+// Root is used to define where the Signer gets its public certificate
+// and private keys for signing.
+type Root struct {
+	CertFile    string
+	KeyFile     string
+	ForceRemote bool
 }
 
 // appendIf appends to a if s is not an empty string.
@@ -186,15 +191,12 @@ func CheckSignature(csr *x509.CertificateRequest, algo x509.SignatureAlgorithm, 
 	return x509.ErrUnsupportedAlgorithm
 }
 
-// NewSigner generates a new standard library certificate signer using
-// the certificate authority certificate and private key and Signing
-// config for signing. caFile should contain the CA's certificate, and
-// the cakeyFile should contain the private key. Both must be
-// PEM-encoded.
-func NewSigner(caFile, cakeyFile string, policy *config.Signing) (s Signer, err error) {
-	var local *StandardSigner
-	var remote *RemoteSigner
-
+// NewSigner generates a new certificate signer from a Root structure
+// If the root structure specifies a force remote, then a remote signer
+// is created, otherwise either a remote or local signer is generated
+// based on the policy. For a local signer, the CertFile and KeyFile
+// need to be defined.
+func NewSigner(root Root, policy *config.Signing) (s Signer, err error) {
 	if policy == nil {
 		policy = &config.Signing{
 			Profiles: map[string]*config.SigningProfile{},
@@ -206,43 +208,22 @@ func NewSigner(caFile, cakeyFile string, policy *config.Signing) (s Signer, err 
 		return nil, cferr.New(cferr.PolicyError, cferr.InvalidPolicy)
 	}
 
-	if policy.NeedsLocalSigner() {
-		log.Debug("Loading CA: ", caFile)
-		ca, err := ioutil.ReadFile(caFile)
-		if err != nil {
-			return nil, err
-		}
-		log.Debug("Loading CA key: ", cakeyFile)
-		cakey, err := ioutil.ReadFile(cakeyFile)
-		if err != nil {
-			return nil, err
-		}
-
-		parsedCa, err := helpers.ParseCertificatePEM(ca)
-		if err != nil {
-			return nil, err
-		}
-
-		priv, err := helpers.ParsePrivateKeyPEM(cakey)
-		if err != nil {
-			return nil, err
-		}
-
-		local = NewStandardSigner(priv, parsedCa, DefaultSigAlgo(priv), policy)
-	}
-
-	if policy.NeedsRemoteSigner() {
-		remote = NewRemoteSigner(policy)
-	}
-
-	if remote != nil && local != nil {
-		// Currently we don't support a hybrid signer
-		return nil, cferr.New(cferr.PolicyError, cferr.InvalidPolicy)
-	} else if remote != nil {
-		return remote, nil
-	} else if local != nil {
-		return local, nil
+	if root.ForceRemote {
+		s, err = NewRemoteSigner(policy)
 	} else {
-		return nil, cferr.New(cferr.PolicyError, cferr.InvalidPolicy)
+		if policy.NeedsLocalSigner() && policy.NeedsRemoteSigner() {
+			// Currently we don't support a hybrid signer
+			return nil, cferr.New(cferr.PolicyError, cferr.InvalidPolicy)
+		}
+
+		if policy.NeedsLocalSigner() {
+			s, err = NewLocalSignerFromFile(root.CertFile, root.KeyFile, policy)
+		}
+
+		if policy.NeedsRemoteSigner() {
+			s, err = NewRemoteSigner(policy)
+		}
 	}
+
+	return
 }

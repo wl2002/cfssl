@@ -1,16 +1,20 @@
 /*
-cfssl is the command line tool to issue/sign/bundle client certificate. It's also a tool to
-start a HTTP server to handle web requests for signing, bundling and verification.
+cfssl is the command line tool to issue/sign/bundle client certificate. It's
+also a tool to start a HTTP server to handle web requests for signing, bundling
+and verification.
 
 Usage:
 	cfssl command [-flags] arguments
 
 The commands are
 
-	bundle	create a client cert bundle
-	sign	signs a client cert
-	serve	starts a HTTP server handling sign and bundle requests
-	version	prints the current cfssl version
+	bundle	 create a certificate bundle
+	sign	 signs a certificate signing request (CSR)
+	serve	 starts a HTTP server handling sign and bundle requests
+	version	 prints the current cfssl version
+	genkey   generates a key and an associated CSR
+	gencert  generates a key and a signed certificate
+	selfsign generates a self-signed certificate
 
 Use "cfssl [command] -help" to find out more about a command.
 */

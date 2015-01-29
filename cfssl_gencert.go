@@ -72,6 +72,7 @@ func gencertMain(args []string) (err error) {
 			return
 		}
 
+		// Remote can be forced on the command line or in the config
 		if Config.remote == "" && Config.cfg == nil {
 			if Config.caFile == "" {
 				log.Error("need a CA certificate (provide one with -ca)")
@@ -97,7 +98,11 @@ func gencertMain(args []string) (err error) {
 			return err
 		}
 
-		sign, err := signer.NewSigner(Config.caFile, Config.caKeyFile, policy)
+		root := signer.Root{
+			CertFile:    Config.caFile,
+			KeyFile:     Config.caKeyFile,
+			ForceRemote: Config.remote == ""}
+		sign, err := signer.NewSigner(root, policy)
 		if err != nil {
 			return err
 		}

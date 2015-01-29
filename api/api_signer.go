@@ -28,7 +28,7 @@ func NewSignHandler(caFile, cakeyFile string, policy *config.Signing) (http.Hand
 	var err error
 	s := new(SignHandler)
 
-	if s.signer, err = signer.NewSigner(caFile, cakeyFile, policy); err != nil {
+	if s.signer, err = signer.NewSigner(signer.Root{CertFile: caFile, KeyFile: cakeyFile}, policy); err != nil {
 		log.Errorf("setting up signer failed: %v", err)
 		return nil, err
 	}
