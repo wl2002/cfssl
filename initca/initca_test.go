@@ -141,7 +141,14 @@ func TestInitCA(t *testing.T) {
 			if err != nil {
 				t.Fatal("CSR loading error:", err)
 			}
-			bytes, err := s.Sign(hostname, csrBytes, nil, "")
+			req := signer.SignRequest{
+				Hostname: hostname,
+				Request:  string(csrBytes),
+				Subject:  nil,
+				Profile:  "",
+				Label:    ""}
+
+			bytes, err := s.Sign(req)
 			if err != nil {
 				t.Fatal(err)
 			}
