@@ -236,7 +236,7 @@ func (cg *CertGeneratorHandler) Handle(w http.ResponseWriter, r *http.Request) e
 	}
 
 	// This API does not override the subject because it was already added to the CSR
-	signReq := signer.SignRequest{req.Hostname, string(csr), nil, req.Profile, req.Label}
+	signReq := signer.SignRequest{Hostname: req.Hostname, Request: string(csr), Profile: req.Profile, Label: req.Label}
 	certPEM, err = cg.signer.Sign(signReq)
 	if err != nil {
 		log.Warningf("failed to sign request: %v", err)

@@ -130,7 +130,7 @@ func testSignFile(t *testing.T, certFile string) ([]byte, error) {
 		t.Fatal(err)
 	}
 
-	return signer.Sign(testHostName, pem, nil, "")
+	return signer.Sign(SignRequest{Hostname:testHostName, Request:string(pem)})
 }
 
 type csrTest struct {
@@ -201,7 +201,7 @@ func TestSignCSRs(t *testing.T) {
 		rsaSigAlgos := []x509.SignatureAlgorithm{x509.SHA1WithRSA, x509.SHA256WithRSA, x509.SHA384WithRSA, x509.SHA512WithRSA}
 		for _, sigAlgo := range rsaSigAlgos {
 			signer.(*StandardSigner).sigAlgo = sigAlgo
-			certBytes, err := signer.Sign(hostname, csr, nil, "")
+			certBytes, err := signer.Sign(SignRequest{Hostname: hostname, Request: string(csr)})
 			if test.errorCallback != nil {
 				test.errorCallback(t, err)
 			} else {
@@ -229,7 +229,7 @@ func TestECDSASigner(t *testing.T) {
 		SigAlgos := []x509.SignatureAlgorithm{x509.ECDSAWithSHA1, x509.ECDSAWithSHA256, x509.ECDSAWithSHA384, x509.ECDSAWithSHA512}
 		for _, sigAlgo := range SigAlgos {
 			signer.(*StandardSigner).sigAlgo = sigAlgo
-			certBytes, err := signer.Sign(hostname, csr, nil, "")
+			certBytes, err := signer.Sign(SignRequest{Hostname:hostname, Request:string(csr)})
 			if test.errorCallback != nil {
 				test.errorCallback(t, err)
 			} else {
@@ -274,7 +274,7 @@ func TestCAIssuing(t *testing.T) {
 		signer.(*StandardSigner).policy = CAPolicy
 		for j, csr := range interCSRs {
 			csrBytes, _ := ioutil.ReadFile(csr)
-			certBytes, err := signer.Sign(hostname, csrBytes, nil, "")
+			certBytes, err := signer.Sign(SignRequest{Hostname: hostname, Request: string(csrBytes)})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -287,7 +287,7 @@ func TestCAIssuing(t *testing.T) {
 			interSigner := &StandardSigner{interCert, interKey, CAPolicy, DefaultSigAlgo(interKey)}
 			for _, anotherCSR := range interCSRs {
 				anotherCSRBytes, _ := ioutil.ReadFile(anotherCSR)
-				bytes, err := interSigner.Sign(hostname, anotherCSRBytes, nil, "")
+				bytes, err := interSigner.Sign(SignRequest{Hostname: hostname, Request: string(anotherCSRBytes)})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -321,7 +321,7 @@ func TestOverrideSubject(t *testing.T) {
 
 	signer := newCustomSigner(t, testECDSACaFile, testECDSACaKeyFile)
 
-	certPEM, err := signer.Sign("localhost", csrPEM, req, "")
+	certPEM, err := signer.Sign(SignRequest{Hostname:"localhost", Request:string(csrPEM), Subject: req})
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
