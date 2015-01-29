@@ -7,7 +7,6 @@ import (
 
 	"github.com/cloudflare/cfssl/api"
 	"github.com/cloudflare/cfssl/bundler"
-	"github.com/cloudflare/cfssl/config"
 	"github.com/cloudflare/cfssl/log"
 	"github.com/cloudflare/cfssl/ubiquity"
 )
@@ -37,6 +36,9 @@ func registerHandlers() error {
 	}
 
 	log.Info("Setting up signer endpoint")
+
+	// Update the signing policy is updated to include flags from the configuration.
+	// The remotes are set here.
 	policy, err := signingPolicyFromConfig()
 	if err != nil {
 		return err
@@ -68,12 +70,8 @@ func registerHandlers() error {
 	http.Handle("/api/v1/cfssl/newkey", generatorHandler)
 
 	log.Info("Setting up new cert endpoint")
-	var profile *config.Signing
-	if Config.cfg != nil {
-		profile = Config.cfg.Signing
-	}
 	newCertGenerator, err := api.NewCertGeneratorHandler(api.CSRValidate,
-		Config.caFile, Config.caKeyFile, Config.remote, profile)
+		Config.caFile, Config.caKeyFile, policy)
 	if err != nil {
 		log.Errorf("endpoint '/api/v1/cfssl/newcert' is disabled")
 	} else {

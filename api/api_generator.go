@@ -140,7 +140,7 @@ type CertGeneratorHandler struct {
 // sign the generated request. If remote is not an empty string, the
 // handler will send signature requests to the CFSSL instance contained
 // in remote.
-func NewCertGeneratorHandler(validator Validator, caFile, caKeyFile, remote string, policy *config.Signing) (http.Handler, error) {
+func NewCertGeneratorHandler(validator Validator, caFile, caKeyFile string, policy *config.Signing) (http.Handler, error) {
 	var err error
 	log.Info("setting up new generator / signer")
 	cg := new(CertGeneratorHandler)
@@ -152,12 +152,11 @@ func NewCertGeneratorHandler(validator Validator, caFile, caKeyFile, remote stri
 		}
 	}
 
-	if cg.signer, err = signer.NewSigner(signer.Root{CertFile: caFile, KeyFile: caKeyFile}, policy); err != nil {
-		if remote == "" {
-			return nil, err
-		}
-		log.Infof("remote cert generator activated")
-		cg.signer = nil
+	root := signer.Root{
+		CertFile: caFile,
+		KeyFile:  caKeyFile}
+	if cg.signer, err = signer.NewSigner(root, policy); err != nil {
+		return nil, err
 	}
 
 	cg.generator = &csr.Generator{Validator: validator}
