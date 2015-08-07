@@ -23,7 +23,6 @@ import (
 	"github.com/cloudflare/cfssl/ubiquity"
 
 	rice "github.com/GeertJohan/go.rice"
-	"io"
 )
 
 // Usage text of 'cfssl serve'
@@ -32,13 +31,13 @@ var serverUsageText = `cfssl serve -- set up a HTTP server handles CF SSL reques
 Usage of serve:
         cfssl serve [-address address] [-ca cert] [-ca-bundle bundle] \
                     [-ca-key key] [-int-bundle bundle] [-int-dir dir] [-port port] \
-                    [-metadata file] [-remote remote_host] [-config config] [-uselocal]
+                    [-metadata file] [-remote remote_host] [-config config]
 
 Flags:
 `
 
 // Flags used by 'cfssl serve'
-var serverFlags = []string{"address", "port", "ca", "ca-key", "ca-bundle", "int-bundle", "int-dir", "metadata", "remote", "config", "uselocal"}
+var serverFlags = []string{"address", "port", "ca", "ca-key", "ca-bundle", "int-bundle", "int-dir", "metadata", "remote", "config"}
 
 var (
 	conf cli.Config
@@ -46,20 +45,6 @@ var (
 )
 
 var errBadSigner = errors.New("signer not initialized")
-
-type SPABox struct {
-	*rice.Box
-}
-
-func (rb *SPABox) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	file, err := rb.Box.Open("/index.html")
-	if err != nil {
-		panic(err)
-	}
-	defer file.Close()
-
-	io.Copy(w, file)
-}
 
 var v1Endpoints = map[string]func() (http.Handler, error){
 	"sign": func() (http.Handler, error) {
@@ -110,14 +95,8 @@ var v1Endpoints = map[string]func() (http.Handler, error){
 		return scan.NewInfoHandler(), nil
 	},
 
-	"/assets/": func() (http.Handler, error) {
-		return http.FileServer(rice.MustFindBox("static").HTTPBox()), nil
-	},
-
 	"/": func() (http.Handler, error) {
-		box := rice.MustFindBox("static")
-		rb := &SPABox{box}
-		return rb, nil
+		return http.FileServer(rice.MustFindBox("static").HTTPBox()), nil
 	},
 }
 
@@ -134,7 +113,7 @@ func v1APIPath(endpoint string) string {
 func registerHandlers() {
 	for path, getHandler := range v1Endpoints {
 		if !strings.HasPrefix(path, "/") {
-			path = "/api/v1/cfssl/" + path
+			path = v1APIPath(path)
 		}
 
 		log.Infof("Setting up '%s' endpoint", path)
