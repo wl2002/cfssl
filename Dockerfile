@@ -5,10 +5,6 @@ WORKDIR /go/src/github.com/cloudflare/cfssl
 ENV GOPATH /go/src/github.com/cloudflare/cfssl:/go
 ENV USER root
 
-EXPOSE 8888
-
-CMD ["cfssl"]
-
 RUN go get github.com/cloudflare/cf-tls/tls
 RUN go get github.com/cloudflare/go-metrics
 RUN go get github.com/cloudflare/redoctober/core
@@ -18,8 +14,9 @@ RUN go get github.com/GeertJohan/go.rice
 
 ADD . /go/src/github.com/cloudflare/cfssl
 
-RUN go build cmd/... && \
-  cp cfssl /usr/local/bin && \
-  cp multirootca /usr/local/bin
+RUN go build -tags nopkcs11 ./cmd/cfssl/...
 
-WORKDIR /opt
+RUN git clone https://github.com/cloudflare/cfssl_trust.git /etc/cfssl
+
+EXPOSE 80
+CMD ["./cfssl", "serve", "-address=0.0.0.0", "-port=80"]
