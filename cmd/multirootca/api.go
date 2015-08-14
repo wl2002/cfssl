@@ -7,13 +7,13 @@ import (
 	"net/http"
 	"net/http/httputil"
 
+	metrics "github.com/cloudflare/cfssl/Godeps/_workspace/src/github.com/cloudflare/go-metrics"
 	"github.com/cloudflare/cfssl/api"
 	"github.com/cloudflare/cfssl/auth"
 	"github.com/cloudflare/cfssl/helpers"
 	"github.com/cloudflare/cfssl/log"
 	"github.com/cloudflare/cfssl/signer"
 	"github.com/cloudflare/cfssl/whitelist"
-	metrics "github.com/cloudflare/go-metrics"
 )
 
 // A SignatureResponse contains only a certificate, as there is no other

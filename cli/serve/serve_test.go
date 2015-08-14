@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	rice "github.com/GeertJohan/go.rice"
+	rice "github.com/cloudflare/cfssl/Godeps/_workspace/src/github.com/GeertJohan/go.rice"
 )
 
 func TestServe(t *testing.T) {

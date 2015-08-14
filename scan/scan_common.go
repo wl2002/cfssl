@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/cloudflare/cf-tls/tls"
+	"github.com/cloudflare/cfssl/Godeps/_workspace/src/github.com/cloudflare/cf-tls/tls"
 	"github.com/cloudflare/cfssl/log"
 )
 

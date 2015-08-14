@@ -14,8 +14,8 @@ import (
 	"encoding/asn1"
 	"errors"
 
+	rc2 "github.com/cloudflare/cfssl/Godeps/_workspace/src/github.com/dgryski/go-rc2"
 	"github.com/cloudflare/cfssl/crypto/pkcs12/pbkdf"
-	rc2 "github.com/dgryski/go-rc2"
 )
 
 type pbeParams struct {

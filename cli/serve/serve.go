@@ -22,7 +22,7 @@ import (
 	"github.com/cloudflare/cfssl/signer"
 	"github.com/cloudflare/cfssl/ubiquity"
 
-	rice "github.com/GeertJohan/go.rice"
+	rice "github.com/cloudflare/cfssl/Godeps/_workspace/src/github.com/GeertJohan/go.rice"
 )
 
 // Usage text of 'cfssl serve'

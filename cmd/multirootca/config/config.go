@@ -21,8 +21,8 @@ import (
 	"github.com/cloudflare/cfssl/log"
 	"github.com/cloudflare/cfssl/whitelist"
 
-	"github.com/cloudflare/redoctober/client"
-	"github.com/cloudflare/redoctober/core"
+	"github.com/cloudflare/cfssl/Godeps/_workspace/src/github.com/cloudflare/redoctober/client"
+	"github.com/cloudflare/cfssl/Godeps/_workspace/src/github.com/cloudflare/redoctober/core"
 )
 
 // configMap is shorthand for the type used as a config struct.

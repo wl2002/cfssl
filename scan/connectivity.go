@@ -8,7 +8,7 @@ import (
 	"net"
 	"strings"
 
-	"github.com/cloudflare/cf-tls/tls"
+	"github.com/cloudflare/cfssl/Godeps/_workspace/src/github.com/cloudflare/cf-tls/tls"
 )
 
 // Connectivity contains scanners testing basic connectivity to the host

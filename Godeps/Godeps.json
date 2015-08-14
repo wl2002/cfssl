@@ -1,0 +1,81 @@
+{
+	"ImportPath": "github.com/cloudflare/cfssl",
+	"GoVersion": "devel",
+	"Packages": [
+		"./..."
+	],
+	"Deps": [
+		{
+			"ImportPath": "github.com/GeertJohan/go.rice",
+			"Rev": "ada95a01c963696fb73320ee662195af68be81ae"
+		},
+		{
+			"ImportPath": "github.com/cloudflare/cf-tls/tls",
+			"Rev": "f1e56c077aef9e50f08ee9edc1cf5a6e631f5ded"
+		},
+		{
+			"ImportPath": "github.com/cloudflare/go-metrics",
+			"Rev": "3be59ceb5538550555459fb77d0efe0e218cdfc7"
+		},
+		{
+			"ImportPath": "github.com/cloudflare/redoctober/client",
+			"Rev": "5e605b1b31a4ad203c800d50f86cbd78e7dab79f"
+		},
+		{
+			"ImportPath": "github.com/cloudflare/redoctober/core",
+			"Rev": "5e605b1b31a4ad203c800d50f86cbd78e7dab79f"
+		},
+		{
+			"ImportPath": "github.com/cloudflare/redoctober/cryptor",
+			"Rev": "5e605b1b31a4ad203c800d50f86cbd78e7dab79f"
+		},
+		{
+			"ImportPath": "github.com/cloudflare/redoctober/ecdh",
+			"Rev": "5e605b1b31a4ad203c800d50f86cbd78e7dab79f"
+		},
+		{
+			"ImportPath": "github.com/cloudflare/redoctober/keycache",
+			"Rev": "5e605b1b31a4ad203c800d50f86cbd78e7dab79f"
+		},
+		{
+			"ImportPath": "github.com/cloudflare/redoctober/padding",
+			"Rev": "5e605b1b31a4ad203c800d50f86cbd78e7dab79f"
+		},
+		{
+			"ImportPath": "github.com/cloudflare/redoctober/passvault",
+			"Rev": "5e605b1b31a4ad203c800d50f86cbd78e7dab79f"
+		},
+		{
+			"ImportPath": "github.com/cloudflare/redoctober/symcrypt",
+			"Rev": "5e605b1b31a4ad203c800d50f86cbd78e7dab79f"
+		},
+		{
+			"ImportPath": "github.com/daaku/go.zipexe",
+			"Rev": "a5fe2436ffcb3236e175e5149162b41cd28bd27d"
+		},
+		{
+			"ImportPath": "github.com/dgryski/go-rc2",
+			"Rev": "8a9021637152186df738b1ec376caf2100fef194"
+		},
+		{
+			"ImportPath": "github.com/kardianos/osext",
+			"Rev": "6e7f843663477789fac7c02def0d0909e969b4e5"
+		},
+		{
+			"ImportPath": "github.com/miekg/pkcs11",
+			"Rev": "88c9f842544e629ec046105d7fb50d5daafae737"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/ocsp",
+			"Rev": "2f3083f6163ef51179ad42ed523a18c9a1141467"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/pbkdf2",
+			"Rev": "2f3083f6163ef51179ad42ed523a18c9a1141467"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/scrypt",
+			"Rev": "2f3083f6163ef51179ad42ed523a18c9a1141467"
+		}
+	]
+}

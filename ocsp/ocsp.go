@@ -14,10 +14,10 @@ import (
 	"io/ioutil"
 	"time"
 
+	"github.com/cloudflare/cfssl/Godeps/_workspace/src/golang.org/x/crypto/ocsp"
 	cferr "github.com/cloudflare/cfssl/errors"
 	"github.com/cloudflare/cfssl/helpers"
 	"github.com/cloudflare/cfssl/log"
-	"golang.org/x/crypto/ocsp"
 )
 
 var statusCode = map[string]int{

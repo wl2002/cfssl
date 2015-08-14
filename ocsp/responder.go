@@ -7,8 +7,8 @@ import (
 	"net/url"
 	"regexp"
 
+	"github.com/cloudflare/cfssl/Godeps/_workspace/src/golang.org/x/crypto/ocsp"
 	"github.com/cloudflare/cfssl/log"
-	"golang.org/x/crypto/ocsp"
 )
 
 var (
