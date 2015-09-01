@@ -31,6 +31,10 @@ var Connectivity = &Family{
 			"Host can perform TLS handshake",
 			tlsDialScan,
 		},
+		"SNIDial": {
+			"Host accepts connections with and without SNI",
+			sniDialScan,
+		},
 	},
 }
 
@@ -154,4 +158,27 @@ func tlsDialScan(host string) (grade Grade, output Output, err error) {
 	conn.Close()
 	grade = Good
 	return
+}
+
+// sniDialScan tests whether the host is available with or without SNI.
+func sniDialScan(host string) (grade Grade, output Output, err error) {
+	configSNI := defaultTLSConfig(host)
+	configNoSNI := &tls.Config{InsecureSkipVerify: true}
+
+	return multiscan(host, func(addrport string) (g Grade, o Output, e error) {
+		var conn *tls.Conn
+
+		if conn, e = tls.DialWithDialer(Dialer, Network, addrport, configSNI); e != nil {
+			return
+		}
+		conn.Close()
+
+		if conn, e = tls.DialWithDialer(Dialer, Network, addrport, configNoSNI); e != nil {
+			return
+		}
+		conn.Close()
+
+		g = Good
+		return
+	})
 }

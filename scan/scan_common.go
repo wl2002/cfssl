@@ -80,10 +80,13 @@ func multiscan(host string, scan scanFunc) (grade Grade, output Output, err erro
 		if g < grade {
 			grade = g
 		}
-
-		out[addr] = o
+		if o != nil {
+			out[addr] = o
+		}
 	}
-	output = out
+	if len(out) > 0 {
+		output = out
+	}
 	return
 }
 
